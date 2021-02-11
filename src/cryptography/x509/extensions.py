@@ -2,15 +2,13 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import abc
 import datetime
 import hashlib
 import ipaddress
+import typing
 from enum import Enum
-
-import six
 
 from cryptography import utils
 from cryptography.hazmat._der import (
@@ -89,28 +87,27 @@ def _make_sequence_methods(field_name):
 
 
 class DuplicateExtension(Exception):
-    def __init__(self, msg, oid):
+    def __init__(self, msg: str, oid: ObjectIdentifier):
         super(DuplicateExtension, self).__init__(msg)
         self.oid = oid
 
 
 class ExtensionNotFound(Exception):
-    def __init__(self, msg, oid):
+    def __init__(self, msg: str, oid: ObjectIdentifier):
         super(ExtensionNotFound, self).__init__(msg)
         self.oid = oid
 
 
-@six.add_metaclass(abc.ABCMeta)
-class ExtensionType(object):
+class ExtensionType(metaclass=abc.ABCMeta):
     @abc.abstractproperty
-    def oid(self):
+    def oid(self) -> ObjectIdentifier:
         """
         Returns the oid associated with the given extension type.
         """
 
 
 class Extensions(object):
-    def __init__(self, extensions):
+    def __init__(self, extensions: typing.List["Extension"]):
         self._extensions = extensions
 
     def get_extension_for_oid(self, oid):
@@ -142,12 +139,11 @@ class Extensions(object):
         return "<Extensions({})>".format(self._extensions)
 
 
-@utils.register_interface(ExtensionType)
-class CRLNumber(object):
+class CRLNumber(ExtensionType):
     oid = ExtensionOID.CRL_NUMBER
 
     def __init__(self, crl_number):
-        if not isinstance(crl_number, six.integer_types):
+        if not isinstance(crl_number, int):
             raise TypeError("crl_number must be an integer")
 
         self._crl_number = crl_number
@@ -170,8 +166,7 @@ class CRLNumber(object):
     crl_number = utils.read_only_property("_crl_number")
 
 
-@utils.register_interface(ExtensionType)
-class AuthorityKeyIdentifier(object):
+class AuthorityKeyIdentifier(ExtensionType):
     oid = ExtensionOID.AUTHORITY_KEY_IDENTIFIER
 
     def __init__(
@@ -199,7 +194,7 @@ class AuthorityKeyIdentifier(object):
                 )
 
         if authority_cert_serial_number is not None and not isinstance(
-            authority_cert_serial_number, six.integer_types
+            authority_cert_serial_number, int
         ):
             raise TypeError("authority_cert_serial_number must be an integer")
 
@@ -262,8 +257,7 @@ class AuthorityKeyIdentifier(object):
     )
 
 
-@utils.register_interface(ExtensionType)
-class SubjectKeyIdentifier(object):
+class SubjectKeyIdentifier(ExtensionType):
     oid = ExtensionOID.SUBJECT_KEY_IDENTIFIER
 
     def __init__(self, digest):
@@ -291,8 +285,7 @@ class SubjectKeyIdentifier(object):
         return hash(self.digest)
 
 
-@utils.register_interface(ExtensionType)
-class AuthorityInformationAccess(object):
+class AuthorityInformationAccess(ExtensionType):
     oid = ExtensionOID.AUTHORITY_INFORMATION_ACCESS
 
     def __init__(self, descriptions):
@@ -323,8 +316,7 @@ class AuthorityInformationAccess(object):
         return hash(tuple(self._descriptions))
 
 
-@utils.register_interface(ExtensionType)
-class SubjectInformationAccess(object):
+class SubjectInformationAccess(ExtensionType):
     oid = ExtensionOID.SUBJECT_INFORMATION_ACCESS
 
     def __init__(self, descriptions):
@@ -391,8 +383,7 @@ class AccessDescription(object):
     access_location = utils.read_only_property("_access_location")
 
 
-@utils.register_interface(ExtensionType)
-class BasicConstraints(object):
+class BasicConstraints(ExtensionType):
     oid = ExtensionOID.BASIC_CONSTRAINTS
 
     def __init__(self, ca, path_length):
@@ -403,7 +394,7 @@ class BasicConstraints(object):
             raise ValueError("path_length must be None when ca is False")
 
         if path_length is not None and (
-            not isinstance(path_length, six.integer_types) or path_length < 0
+            not isinstance(path_length, int) or path_length < 0
         ):
             raise TypeError(
                 "path_length must be a non-negative integer or None"
@@ -433,12 +424,11 @@ class BasicConstraints(object):
         return hash((self.ca, self.path_length))
 
 
-@utils.register_interface(ExtensionType)
-class DeltaCRLIndicator(object):
+class DeltaCRLIndicator(ExtensionType):
     oid = ExtensionOID.DELTA_CRL_INDICATOR
 
     def __init__(self, crl_number):
-        if not isinstance(crl_number, six.integer_types):
+        if not isinstance(crl_number, int):
             raise TypeError("crl_number must be an integer")
 
         self._crl_number = crl_number
@@ -461,8 +451,7 @@ class DeltaCRLIndicator(object):
         return "<DeltaCRLIndicator(crl_number={0.crl_number})>".format(self)
 
 
-@utils.register_interface(ExtensionType)
-class CRLDistributionPoints(object):
+class CRLDistributionPoints(ExtensionType):
     oid = ExtensionOID.CRL_DISTRIBUTION_POINTS
 
     def __init__(self, distribution_points):
@@ -497,8 +486,7 @@ class CRLDistributionPoints(object):
         return hash(tuple(self._distribution_points))
 
 
-@utils.register_interface(ExtensionType)
-class FreshestCRL(object):
+class FreshestCRL(ExtensionType):
     oid = ExtensionOID.FRESHEST_CRL
 
     def __init__(self, distribution_points):
@@ -610,12 +598,12 @@ class DistributionPoint(object):
 
     def __hash__(self):
         if self.full_name is not None:
-            fn = tuple(self.full_name)
+            fn: typing.Optional[tuple] = tuple(self.full_name)
         else:
             fn = None
 
         if self.crl_issuer is not None:
-            crl_issuer = tuple(self.crl_issuer)
+            crl_issuer: typing.Optional[tuple] = tuple(self.crl_issuer)
         else:
             crl_issuer = None
 
@@ -640,13 +628,12 @@ class ReasonFlags(Enum):
     remove_from_crl = "removeFromCRL"
 
 
-@utils.register_interface(ExtensionType)
-class PolicyConstraints(object):
+class PolicyConstraints(ExtensionType):
     oid = ExtensionOID.POLICY_CONSTRAINTS
 
     def __init__(self, require_explicit_policy, inhibit_policy_mapping):
         if require_explicit_policy is not None and not isinstance(
-            require_explicit_policy, six.integer_types
+            require_explicit_policy, int
         ):
             raise TypeError(
                 "require_explicit_policy must be a non-negative integer or "
@@ -654,7 +641,7 @@ class PolicyConstraints(object):
             )
 
         if inhibit_policy_mapping is not None and not isinstance(
-            inhibit_policy_mapping, six.integer_types
+            inhibit_policy_mapping, int
         ):
             raise TypeError(
                 "inhibit_policy_mapping must be a non-negative integer or None"
@@ -671,9 +658,9 @@ class PolicyConstraints(object):
 
     def __repr__(self):
         return (
-            u"<PolicyConstraints(require_explicit_policy={0.require_explicit"
-            u"_policy}, inhibit_policy_mapping={0.inhibit_policy_"
-            u"mapping})>".format(self)
+            "<PolicyConstraints(require_explicit_policy={0.require_explicit"
+            "_policy}, inhibit_policy_mapping={0.inhibit_policy_"
+            "mapping})>".format(self)
         )
 
     def __eq__(self, other):
@@ -701,8 +688,7 @@ class PolicyConstraints(object):
     )
 
 
-@utils.register_interface(ExtensionType)
-class CertificatePolicies(object):
+class CertificatePolicies(ExtensionType):
     oid = ExtensionOID.CERTIFICATE_POLICIES
 
     def __init__(self, policies):
@@ -743,8 +729,7 @@ class PolicyInformation(object):
         if policy_qualifiers:
             policy_qualifiers = list(policy_qualifiers)
             if not all(
-                isinstance(x, (six.text_type, UserNotice))
-                for x in policy_qualifiers
+                isinstance(x, (str, UserNotice)) for x in policy_qualifiers
             ):
                 raise TypeError(
                     "policy_qualifiers must be a list of strings and/or "
@@ -773,7 +758,7 @@ class PolicyInformation(object):
 
     def __hash__(self):
         if self.policy_qualifiers is not None:
-            pq = tuple(self.policy_qualifiers)
+            pq: typing.Optional[tuple] = tuple(self.policy_qualifiers)
         else:
             pq = None
 
@@ -854,8 +839,7 @@ class NoticeReference(object):
     notice_numbers = utils.read_only_property("_notice_numbers")
 
 
-@utils.register_interface(ExtensionType)
-class ExtendedKeyUsage(object):
+class ExtendedKeyUsage(ExtensionType):
     oid = ExtensionOID.EXTENDED_KEY_USAGE
 
     def __init__(self, usages):
@@ -885,8 +869,7 @@ class ExtendedKeyUsage(object):
         return hash(tuple(self._usages))
 
 
-@utils.register_interface(ExtensionType)
-class OCSPNoCheck(object):
+class OCSPNoCheck(ExtensionType):
     oid = ExtensionOID.OCSP_NO_CHECK
 
     def __eq__(self, other):
@@ -905,8 +888,7 @@ class OCSPNoCheck(object):
         return "<OCSPNoCheck()>"
 
 
-@utils.register_interface(ExtensionType)
-class PrecertPoison(object):
+class PrecertPoison(ExtensionType):
     oid = ExtensionOID.PRECERT_POISON
 
     def __eq__(self, other):
@@ -925,8 +907,7 @@ class PrecertPoison(object):
         return "<PrecertPoison()>"
 
 
-@utils.register_interface(ExtensionType)
-class TLSFeature(object):
+class TLSFeature(ExtensionType):
     oid = ExtensionOID.TLS_FEATURE
 
     def __init__(self, features):
@@ -974,12 +955,11 @@ class TLSFeatureType(Enum):
 _TLS_FEATURE_TYPE_TO_ENUM = {x.value: x for x in TLSFeatureType}
 
 
-@utils.register_interface(ExtensionType)
-class InhibitAnyPolicy(object):
+class InhibitAnyPolicy(ExtensionType):
     oid = ExtensionOID.INHIBIT_ANY_POLICY
 
     def __init__(self, skip_certs):
-        if not isinstance(skip_certs, six.integer_types):
+        if not isinstance(skip_certs, int):
             raise TypeError("skip_certs must be an integer")
 
         if skip_certs < 0:
@@ -1005,21 +985,20 @@ class InhibitAnyPolicy(object):
     skip_certs = utils.read_only_property("_skip_certs")
 
 
-@utils.register_interface(ExtensionType)
-class KeyUsage(object):
+class KeyUsage(ExtensionType):
     oid = ExtensionOID.KEY_USAGE
 
     def __init__(
         self,
-        digital_signature,
-        content_commitment,
-        key_encipherment,
-        data_encipherment,
-        key_agreement,
-        key_cert_sign,
-        crl_sign,
-        encipher_only,
-        decipher_only,
+        digital_signature: bool,
+        content_commitment: bool,
+        key_encipherment: bool,
+        data_encipherment: bool,
+        key_agreement: bool,
+        key_cert_sign: bool,
+        crl_sign: bool,
+        encipher_only: bool,
+        decipher_only: bool,
     ):
         if not key_agreement and (encipher_only or decipher_only):
             raise ValueError(
@@ -1119,11 +1098,14 @@ class KeyUsage(object):
         )
 
 
-@utils.register_interface(ExtensionType)
-class NameConstraints(object):
+class NameConstraints(ExtensionType):
     oid = ExtensionOID.NAME_CONSTRAINTS
 
-    def __init__(self, permitted_subtrees, excluded_subtrees):
+    def __init__(
+        self,
+        permitted_subtrees: typing.Optional[typing.Iterable[GeneralName]],
+        excluded_subtrees: typing.Optional[typing.Iterable[GeneralName]],
+    ):
         if permitted_subtrees is not None:
             permitted_subtrees = list(permitted_subtrees)
             if not all(isinstance(x, GeneralName) for x in permitted_subtrees):
@@ -1180,18 +1162,18 @@ class NameConstraints(object):
 
     def __repr__(self):
         return (
-            u"<NameConstraints(permitted_subtrees={0.permitted_subtrees}, "
-            u"excluded_subtrees={0.excluded_subtrees})>".format(self)
+            "<NameConstraints(permitted_subtrees={0.permitted_subtrees}, "
+            "excluded_subtrees={0.excluded_subtrees})>".format(self)
         )
 
     def __hash__(self):
         if self.permitted_subtrees is not None:
-            ps = tuple(self.permitted_subtrees)
+            ps: typing.Optional[tuple] = tuple(self.permitted_subtrees)
         else:
             ps = None
 
         if self.excluded_subtrees is not None:
-            es = tuple(self.excluded_subtrees)
+            es: typing.Optional[tuple] = tuple(self.excluded_subtrees)
         else:
             es = None
 
@@ -1202,7 +1184,9 @@ class NameConstraints(object):
 
 
 class Extension(object):
-    def __init__(self, oid, critical, value):
+    def __init__(
+        self, oid: ObjectIdentifier, critical: bool, value: ExtensionType
+    ):
         if not isinstance(oid, ObjectIdentifier):
             raise TypeError(
                 "oid argument must be an ObjectIdentifier instance."
@@ -1243,7 +1227,7 @@ class Extension(object):
 
 
 class GeneralNames(object):
-    def __init__(self, general_names):
+    def __init__(self, general_names: typing.Iterable[GeneralName]):
         general_names = list(general_names)
         if not all(isinstance(x, GeneralName) for x in general_names):
             raise TypeError(
@@ -1255,7 +1239,7 @@ class GeneralNames(object):
 
     __len__, __iter__, __getitem__ = _make_sequence_methods("_general_names")
 
-    def get_values_for_type(self, type):
+    def get_values_for_type(self, type: typing.Type[GeneralName]):
         # Return the value of each GeneralName, except for OtherName instances
         # which we return directly because it has two important properties not
         # just one value.
@@ -1280,11 +1264,10 @@ class GeneralNames(object):
         return hash(tuple(self._general_names))
 
 
-@utils.register_interface(ExtensionType)
-class SubjectAlternativeName(object):
+class SubjectAlternativeName(ExtensionType):
     oid = ExtensionOID.SUBJECT_ALTERNATIVE_NAME
 
-    def __init__(self, general_names):
+    def __init__(self, general_names: typing.Iterable[GeneralName]):
         self._general_names = GeneralNames(general_names)
 
     __len__, __iter__, __getitem__ = _make_sequence_methods("_general_names")
@@ -1308,11 +1291,10 @@ class SubjectAlternativeName(object):
         return hash(self._general_names)
 
 
-@utils.register_interface(ExtensionType)
-class IssuerAlternativeName(object):
+class IssuerAlternativeName(ExtensionType):
     oid = ExtensionOID.ISSUER_ALTERNATIVE_NAME
 
-    def __init__(self, general_names):
+    def __init__(self, general_names: typing.Iterable[GeneralName]):
         self._general_names = GeneralNames(general_names)
 
     __len__, __iter__, __getitem__ = _make_sequence_methods("_general_names")
@@ -1336,11 +1318,10 @@ class IssuerAlternativeName(object):
         return hash(self._general_names)
 
 
-@utils.register_interface(ExtensionType)
-class CertificateIssuer(object):
+class CertificateIssuer(ExtensionType):
     oid = CRLEntryExtensionOID.CERTIFICATE_ISSUER
 
-    def __init__(self, general_names):
+    def __init__(self, general_names: typing.Iterable[GeneralName]):
         self._general_names = GeneralNames(general_names)
 
     __len__, __iter__, __getitem__ = _make_sequence_methods("_general_names")
@@ -1364,11 +1345,10 @@ class CertificateIssuer(object):
         return hash(self._general_names)
 
 
-@utils.register_interface(ExtensionType)
-class CRLReason(object):
+class CRLReason(ExtensionType):
     oid = CRLEntryExtensionOID.CRL_REASON
 
-    def __init__(self, reason):
+    def __init__(self, reason: ReasonFlags):
         if not isinstance(reason, ReasonFlags):
             raise TypeError("reason must be an element from ReasonFlags")
 
@@ -1392,11 +1372,10 @@ class CRLReason(object):
     reason = utils.read_only_property("_reason")
 
 
-@utils.register_interface(ExtensionType)
-class InvalidityDate(object):
+class InvalidityDate(ExtensionType):
     oid = CRLEntryExtensionOID.INVALIDITY_DATE
 
-    def __init__(self, invalidity_date):
+    def __init__(self, invalidity_date: datetime.datetime):
         if not isinstance(invalidity_date, datetime.datetime):
             raise TypeError("invalidity_date must be a datetime.datetime")
 
@@ -1422,11 +1401,15 @@ class InvalidityDate(object):
     invalidity_date = utils.read_only_property("_invalidity_date")
 
 
-@utils.register_interface(ExtensionType)
-class PrecertificateSignedCertificateTimestamps(object):
+class PrecertificateSignedCertificateTimestamps(ExtensionType):
     oid = ExtensionOID.PRECERT_SIGNED_CERTIFICATE_TIMESTAMPS
 
-    def __init__(self, signed_certificate_timestamps):
+    def __init__(
+        self,
+        signed_certificate_timestamps: typing.Iterable[
+            SignedCertificateTimestamp
+        ],
+    ):
         signed_certificate_timestamps = list(signed_certificate_timestamps)
         if not all(
             isinstance(sct, SignedCertificateTimestamp)
@@ -1463,11 +1446,15 @@ class PrecertificateSignedCertificateTimestamps(object):
         return not self == other
 
 
-@utils.register_interface(ExtensionType)
-class SignedCertificateTimestamps(object):
+class SignedCertificateTimestamps(ExtensionType):
     oid = ExtensionOID.SIGNED_CERTIFICATE_TIMESTAMPS
 
-    def __init__(self, signed_certificate_timestamps):
+    def __init__(
+        self,
+        signed_certificate_timestamps: typing.Iterable[
+            SignedCertificateTimestamp
+        ],
+    ):
         signed_certificate_timestamps = list(signed_certificate_timestamps)
         if not all(
             isinstance(sct, SignedCertificateTimestamp)
@@ -1502,11 +1489,10 @@ class SignedCertificateTimestamps(object):
         return not self == other
 
 
-@utils.register_interface(ExtensionType)
-class OCSPNonce(object):
+class OCSPNonce(ExtensionType):
     oid = OCSPExtensionOID.NONCE
 
-    def __init__(self, nonce):
+    def __init__(self, nonce: bytes):
         if not isinstance(nonce, bytes):
             raise TypeError("nonce must be bytes")
 
@@ -1530,8 +1516,7 @@ class OCSPNonce(object):
     nonce = utils.read_only_property("_nonce")
 
 
-@utils.register_interface(ExtensionType)
-class IssuingDistributionPoint(object):
+class IssuingDistributionPoint(ExtensionType):
     oid = ExtensionOID.ISSUING_DISTRIBUTION_POINT
 
     def __init__(
@@ -1672,9 +1657,8 @@ class IssuingDistributionPoint(object):
     )
 
 
-@utils.register_interface(ExtensionType)
-class UnrecognizedExtension(object):
-    def __init__(self, oid, value):
+class UnrecognizedExtension(ExtensionType):
+    def __init__(self, oid: ObjectIdentifier, value: bytes):
         if not isinstance(oid, ObjectIdentifier):
             raise TypeError("oid must be an ObjectIdentifier")
         self._oid = oid

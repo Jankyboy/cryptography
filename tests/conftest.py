@@ -2,17 +2,12 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 import pytest
 
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
 
-from .utils import (
-    check_backend_support,
-    load_wycheproof_tests,
-    skip_if_wycheproof_none,
-)
+from .utils import check_backend_support
 
 
 def pytest_report_header(config):
@@ -26,18 +21,6 @@ def pytest_report_header(config):
 
 def pytest_addoption(parser):
     parser.addoption("--wycheproof-root", default=None)
-
-
-def pytest_generate_tests(metafunc):
-    if "wycheproof" in metafunc.fixturenames:
-        wycheproof = metafunc.config.getoption("--wycheproof-root")
-        skip_if_wycheproof_none(wycheproof)
-
-        testcases = []
-        marker = metafunc.definition.get_closest_marker("wycheproof_tests")
-        for path in marker.args:
-            testcases.extend(load_wycheproof_tests(wycheproof, path))
-        metafunc.parametrize("wycheproof", testcases)
 
 
 def pytest_runtest_setup(item):

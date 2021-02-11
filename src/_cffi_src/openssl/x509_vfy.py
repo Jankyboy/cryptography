@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-from __future__ import absolute_import, division, print_function
 
 INCLUDES = """
 #include <openssl/x509_vfy.h>
@@ -123,6 +122,8 @@ static const long X509_V_FLAG_SUITEB_128_LOS_ONLY;
 static const long X509_V_FLAG_SUITEB_192_LOS;
 static const long X509_V_FLAG_SUITEB_128_LOS;
 static const long X509_V_FLAG_PARTIAL_CHAIN;
+static const long X509_V_FLAG_NO_ALT_CHAINS;
+static const long X509_V_FLAG_NO_CHECK_TIME;
 
 static const long X509_LU_X509;
 static const long X509_LU_CRL;
@@ -156,8 +157,12 @@ int X509_STORE_CTX_init(X509_STORE_CTX *, X509_STORE *, X509 *,
                         Cryptography_STACK_OF_X509 *);
 void X509_STORE_CTX_trusted_stack(X509_STORE_CTX *,
                                   Cryptography_STACK_OF_X509 *);
+void X509_STORE_CTX_set0_trusted_stack(X509_STORE_CTX *,
+                                  Cryptography_STACK_OF_X509 *);
 void X509_STORE_CTX_set_cert(X509_STORE_CTX *, X509 *);
 void X509_STORE_CTX_set_chain(X509_STORE_CTX *,Cryptography_STACK_OF_X509 *);
+void X509_STORE_CTX_set0_untrusted(X509_STORE_CTX *,
+                                  Cryptography_STACK_OF_X509 *);
 X509_VERIFY_PARAM *X509_STORE_CTX_get0_param(X509_STORE_CTX *);
 void X509_STORE_CTX_set0_param(X509_STORE_CTX *, X509_VERIFY_PARAM *);
 int X509_STORE_CTX_set_default(X509_STORE_CTX *, const char *);
@@ -234,7 +239,7 @@ static const long X509_V_FLAG_SUITEB_192_LOS = 0;
 static const long X509_V_FLAG_SUITEB_128_LOS = 0;
 #endif
 
-#if CRYPTOGRAPHY_OPENSSL_LESS_THAN_110 || CRYPTOGRAPHY_IS_LIBRESSL
+#if CRYPTOGRAPHY_IS_LIBRESSL
 static const long Cryptography_HAS_110_VERIFICATION_PARAMS = 0;
 #ifndef X509_CHECK_FLAG_NEVER_CHECK_SUBJECT
 static const long X509_CHECK_FLAG_NEVER_CHECK_SUBJECT = 0;
@@ -243,29 +248,7 @@ static const long X509_CHECK_FLAG_NEVER_CHECK_SUBJECT = 0;
 static const long Cryptography_HAS_110_VERIFICATION_PARAMS = 1;
 #endif
 
-#if CRYPTOGRAPHY_OPENSSL_LESS_THAN_110 && !CRYPTOGRAPHY_IS_LIBRESSL
-Cryptography_STACK_OF_X509_OBJECT *X509_STORE_get0_objects(X509_STORE *ctx) {
-    return ctx->objs;
-}
-X509_VERIFY_PARAM *X509_STORE_get0_param(X509_STORE *store) {
-    return store->param;
-}
-int X509_OBJECT_get_type(const X509_OBJECT *x) {
-    return x->type;
-}
-
-/* from x509/x509_vfy.c */
-X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *ctx)
-{
-    return ctx->cert;
-}
-
-X509 *X509_OBJECT_get0_X509(X509_OBJECT *x) {
-    return x->data.x509;
-}
-#endif
-
-#if CRYPTOGRAPHY_OPENSSL_LESS_THAN_110
+#if CRYPTOGRAPHY_IS_LIBRESSL
 static const long Cryptography_HAS_X509_STORE_CTX_GET_ISSUER = 0;
 typedef void *X509_STORE_CTX_get_issuer_fn;
 X509_STORE_CTX_get_issuer_fn (*X509_STORE_get_get_issuer)(X509_STORE *) = NULL;
